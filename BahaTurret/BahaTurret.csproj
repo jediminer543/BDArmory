@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="3.5" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProductVersion>9.0.21022</ProductVersion>
+    <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{D86F2003-1724-4F4C-BB5A-B0109CB16F35}</ProjectGuid>
     <OutputType>Library</OutputType>
@@ -33,25 +33,25 @@
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
-    <Reference Include="System" />
     <Reference Include="Assembly-CSharp">
-      <HintPath>C:\Games\KSP 1.01 - Mod Dev\KSP_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>C:\Games\KSP 1.0.4 - Mod Dev\KSP_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>C:\Games\KSP 1.01 - Mod Dev\KSP_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>C:\Games\KSP 1.0.4 - Mod Dev\KSP_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>C:\Games\KSP 1.0.4 - Mod Dev\KSP_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BahaTurret.cs" />
     <Compile Include="CFEnable.cs" />
     <Compile Include="MissileLauncher.cs" />
     <Compile Include="Misc.cs" />
     <Compile Include="ShellCasing.cs" />
     <Compile Include="BDArmorySettings.cs" />
-    <Compile Include="BahaTurretBullet.cs" />
     <Compile Include="ExplosionFX.cs" />
     <Compile Include="BulletHitFX.cs" />
-    <Compile Include="MissileFire.cs" />
     <Compile Include="CMFlare.cs" />
     <Compile Include="CMDropper.cs" />
     <Compile Include="RocketLauncher.cs" />
@@ -71,8 +71,46 @@
     <Compile Include="TargetInfo.cs" />
     <Compile Include="BDATargetManager.cs" />
     <Compile Include="BDModulePilotAI.cs" />
+    <Compile Include="TargetingCamera.cs" />
+    <Compile Include="ModuleTargetingCamera.cs" />
+    <Compile Include="ModuleTurret.cs" />
+    <Compile Include="VectorUtils.cs" />
+    <Compile Include="ModuleWeapon.cs" />
+    <Compile Include="ObjectPool.cs" />
+    <Compile Include="PooledBullet.cs" />
+    <Compile Include="CameraBulletRenderer.cs" />
+    <Compile Include="BDAShaderLoader.cs" />
+    <Compile Include="IBDWeapon.cs" />
+    <Compile Include="MissileFire.cs" />
+    <Compile Include="TGPCameraEffects.cs" />
+    <Compile Include="BDGUIUtils.cs" />
+    <Compile Include="TGPCamRotator.cs" />
+    <Compile Include="CMSmoke.cs" />
+    <Compile Include="TargetSignatureData.cs" />
+    <Compile Include="ModuleRadar.cs" />
+    <Compile Include="RadarUtils.cs" />
+    <Compile Include="BDAEditorCategory.cs" />
+    <Compile Include="BDAExtensions.cs" />
+    <Compile Include="BDACategoryModule.cs" />
+    <Compile Include="RadarWarningReceiver.cs" />
+    <Compile Include="CMChaff.cs" />
+    <Compile Include="VesselChaffInfo.cs" />
+    <Compile Include="VesselECMJInfo.cs" />
+    <Compile Include="ModuleECMJammer.cs" />
+    <Compile Include="DecoupledBooster.cs" />
+    <Compile Include="ModuleMovingPart.cs" />
+    <Compile Include="GPSTargetInfo.cs" />
+    <Compile Include="ViewScanResults.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Animation\" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="GrayscaleEffectShader.shader" />
+    <EmbeddedResource Include="UnlitBlack.shader" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BahaTurret.cs" />
+    <None Include="BahaTurretBullet.cs" />
   </ItemGroup>
 </Project>

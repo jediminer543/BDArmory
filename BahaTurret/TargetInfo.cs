@@ -24,6 +24,8 @@ namespace BahaTurret
 		{
 			get
 			{
+				if(!vessel) return false;
+
 				return vessel.LandedOrSplashed;
 			}
 		}
@@ -31,6 +33,7 @@ namespace BahaTurret
 		{
 			get
 			{
+				if(!vessel) return Vector3.zero;
 				return vessel.srf_velocity;
 			}
 		}
@@ -68,21 +71,33 @@ namespace BahaTurret
 				{
 					return false;
 				}
+
 				foreach(var wm in Vessel.FindPartModulesImplementing<MissileFire>())
+				{
+					if(wm.vessel.IsControllable)
+					{
+						return true;
+					}
+					else
+					{
+						return false;
+					}
+				}
+
+				if(isMissile && missileModule && !missileModule.hasMissed)
 				{
 					return true;
 				}
+
 				return false;
 			}
 		}
 
 		List<MissileFire> friendliesEngaging;
 
-		bool hasStarted = false;
 
-		void Start()
+		void Awake()
 		{
-			hasStarted = true;
 			if(!vessel)
 			{
 				vessel = GetComponent<Vessel>();
@@ -91,39 +106,49 @@ namespace BahaTurret
 			{
 				Debug.Log ("TargetInfo was added to a non-vessel");
 				Destroy (this);
+				return;
 			}
+
+			//destroy this if a target info is already attached to the vessel
+			foreach(var otherInfo in vessel.gameObject.GetComponents<TargetInfo>())
+			{
+				if(otherInfo != this)
+				{
+					Destroy(this);
+					return;
+				}
+			}
+
+			team = BDArmorySettings.BDATeams.None;
 
 			bool foundMf = false;
 			foreach(var mf in vessel.FindPartModulesImplementing<MissileFire>())
 			{
 				foundMf = true;
-				team = mf.team ? BDArmorySettings.BDATeams.B : BDArmorySettings.BDATeams.A;
+				team = BDATargetManager.BoolToTeam(mf.team);
 				break;
 			}
-			bool foundMl = false;
 			if(!foundMf)
 			{
 				foreach(var ml in vessel.FindPartModulesImplementing<MissileLauncher>())
 				{
-					foundMl = true;
-					team = ml.team ? BDArmorySettings.BDATeams.B : BDArmorySettings.BDATeams.A;
+					isMissile = true;
+					missileModule = ml;
+					team = BDATargetManager.BoolToTeam(ml.team);
 					break;
 				}
-
-				if(!foundMl)
-				{
-					Debug.Log("TargetInfo was added to vessel with mo WpnMgr or MissileLauncher");
-					Destroy(this);
-				}
 			}
-
-
-			if(!BDATargetManager.TargetDatabase[BDATargetManager.OtherTeam(team)].Contains(this))
+				
+			if(team != BDArmorySettings.BDATeams.None)
 			{
-				BDATargetManager.TargetDatabase[BDATargetManager.OtherTeam(team)].Add(this);
+				if(!BDATargetManager.TargetDatabase[BDATargetManager.OtherTeam(team)].Contains(this))
+				{
+					BDATargetManager.TargetDatabase[BDATargetManager.OtherTeam(team)].Add(this);
+				}
 			}
 
 			friendliesEngaging = new List<MissileFire>();
+
 			vessel.OnJustAboutToBeDestroyed += AboutToBeDestroyed;
 		}
 
@@ -132,6 +157,14 @@ namespace BahaTurret
 			if(!vessel)
 			{
 				AboutToBeDestroyed();
+			}
+			else
+			{
+				if(vessel.vesselType == VesselType.Debris)
+				{
+					RemoveFromDatabases();
+					team = BDArmorySettings.BDATeams.None;
+				}
 			}
 		}
 
@@ -150,10 +183,12 @@ namespace BahaTurret
 
 		public void Engage(MissileFire mf)
 		{
+			/*
 			if(!hasStarted)
 			{
 				Start();
 			}
+			*/
 			if(!friendliesEngaging.Contains(mf))
 			{
 				friendliesEngaging.Add(mf);
@@ -167,7 +202,7 @@ namespace BahaTurret
 		
 		void AboutToBeDestroyed()
 		{
-			BDATargetManager.TargetDatabase[team].Remove(this);
+			RemoveFromDatabases();
 			Destroy(this);
 		}
 
@@ -176,6 +211,12 @@ namespace BahaTurret
 			float thisSqrDist = (position-myMf.transform.position).sqrMagnitude;
 			float otherSqrDist = (otherTarget.position-myMf.transform.position).sqrMagnitude;
 			return thisSqrDist < otherSqrDist;
+		}
+
+		public void RemoveFromDatabases()
+		{
+			BDATargetManager.TargetDatabase[BDArmorySettings.BDATeams.A].Remove(this);
+			BDATargetManager.TargetDatabase[BDArmorySettings.BDATeams.B].Remove(this);
 		}
 	}
 }

@@ -39,6 +39,8 @@ namespace BahaTurret
 		public float cruiseAltitude = 500;
 
 
+		public float timeToImpact;
+
 		[KSPAction("Start Guidance")]
 		public void AGStartGuidance(KSPActionParam param)
 		{
@@ -147,24 +149,26 @@ namespace BahaTurret
 			if(guidanceActive && targetVessel!=null && vessel!=null && vesselTransform!=null && velocityTransform!=null)
 			{
 				velocityTransform.rotation = Quaternion.LookRotation(vessel.srf_velocity, -vesselTransform.forward);
-				Vector3 targetPosition = targetVessel.transform.position;
+				Vector3 targetPosition = targetVessel.CoM;
 				Vector3 localAngVel = vessel.angularVelocity;
 
 				if(guidanceMode == 1)
 				{
-					targetPosition = MissileGuidance.GetAirToAirTarget(targetPosition, vessel, targetVessel);
+					targetPosition = MissileGuidance.GetAirToAirTarget(targetPosition, vessel.srf_velocity, vessel.acceleration, vessel, out timeToImpact);
 				}
 				else if(guidanceMode == 2)
 				{
-					targetPosition = MissileGuidance.GetAirToGroundTarget(targetPosition, vessel, targetVessel, 1.85f);
+					targetPosition = MissileGuidance.GetAirToGroundTarget(targetPosition, vessel, 1.85f);
 				}
 				else
 				{
-					targetPosition = MissileGuidance.GetCruiseTarget(targetPosition, vessel, targetVessel, cruiseAltitude);
+					targetPosition = MissileGuidance.GetCruiseTarget(targetPosition, vessel, cruiseAltitude);
 				}
 
 				Vector3 targetDirection = velocityTransform.InverseTransformPoint(targetPosition).normalized;
 				targetDirection = Vector3.RotateTowards(Vector3.forward, targetDirection, 15*Mathf.Deg2Rad, 0);
+
+
 		
 				float steerYaw = (steerMult * targetDirection.x) - (steerDamping * -localAngVel.z);
 				float steerPitch = (steerMult * targetDirection.y) - (steerDamping * -localAngVel.x);

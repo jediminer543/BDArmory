@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace BahaTurret
 {
+	[Obsolete("Use ModuleWeapon and/or ModuleTurret instead")]
 	public class BahaTurret : PartModule
 	{
 		[KSPField(isPersistant = true)]
@@ -28,6 +29,7 @@ namespace BahaTurret
 		
 		private Transform pitchTransform;
 		private Transform yawTransform;
+		public Transform referenceTransform;
 		private Vector3 yawAxis;
 		private Vector3 pitchAxis;
 		private float timeCheck = 0;
@@ -160,7 +162,17 @@ namespace BahaTurret
 		public string pitchTransformName = "aimPitch";
 		[KSPField(isPersistant = false)]
 		public float tracerLength = 0;
-		
+
+		[KSPField(isPersistant = false)]
+		public bool showReloadMeter = false;
+
+		[KSPField(isPersistant = false)]
+		public string reloadAudioPath = string.Empty;
+		AudioClip reloadAudioClip;
+		[KSPField(isPersistant = false)]
+		public string reloadCompletePath = string.Empty;
+		AudioClip reloadCompleteAudioClip;
+
 		[KSPField(isPersistant = false)]
 		public bool moveChildren = false;
 
@@ -191,9 +203,12 @@ namespace BahaTurret
 		private float muzzleFlashVelocity = 4;
 		
 		private VInfoBox heatGauge = null;
+
+		private VInfoBox reloadBar = null;
 		
 		private bool wasFiring = false;
-		
+
+		public float maxAutoFireAngle = 2;
 		
 		//aimer textures
 		Vector3 pointingAtPosition;
@@ -309,6 +324,7 @@ namespace BahaTurret
 			
 			pitchTransform = part.FindModelTransform(pitchTransformName);
 			yawTransform = part.FindModelTransform(yawTransformName);
+			referenceTransform = yawTransform.parent;
 			yawAxis = new Vector3(0,0,1);
 			pitchAxis = new Vector3(0,-1,0);
 			hitPart = null;
@@ -327,7 +343,16 @@ namespace BahaTurret
 			audioSource2.maxDistance = 1000;
 			audioSource2.dopplerLevel = 0;
 			audioSource2.priority = 10;
-			
+
+			if(reloadAudioPath != string.Empty)
+			{
+				reloadAudioClip = (AudioClip) GameDatabase.Instance.GetAudioClip(reloadAudioPath);
+			}
+			if(reloadCompletePath != string.Empty)
+			{
+				reloadCompleteAudioClip = (AudioClip) GameDatabase.Instance.GetAudioClip(reloadCompletePath);
+			}
+
 			if(weaponType == "laser")
 			{
 				chargeSound = GameDatabase.Instance.GetAudioClip(chargeSoundPath);
@@ -387,20 +412,48 @@ namespace BahaTurret
 					lr.SetPosition(1, tf.position);
 				}
 			}
-			
-			//heat
-			if(heat > maxHeat/3)
+
+			if(showReloadMeter)
 			{
-				if(heatGauge == null)
+				if(Time.time-timeCheck < (60/roundsPerMinute) && Time.time-timeCheck > 0.1f)
 				{
-					heatGauge = InitHeatGauge(part);
+					if(reloadBar == null)
+					{
+						reloadBar = InitReloadBar(part);
+						if(reloadAudioClip)
+						{
+							audioSource.PlayOneShot(reloadAudioClip);
+						}
+					}
+					reloadBar.SetValue(Time.time-timeCheck, 0, 60/roundsPerMinute);
 				}
-				heatGauge.SetValue(heat, maxHeat/3, maxHeat);
+				else if(reloadBar != null)
+				{
+					part.stackIcon.ClearInfoBoxes();
+					reloadBar = null;
+					if(reloadCompleteAudioClip)
+					{
+						audioSource.PlayOneShot(reloadCompleteAudioClip);
+					}
+
+				}
 			}
-			else if(heatGauge != null && heat < maxHeat/4)
+			else
 			{
-				part.stackIcon.ClearInfoBoxes();
-				heatGauge = null;
+				//heat
+				if(heat > maxHeat/3)
+				{
+					if(heatGauge == null)
+					{
+						heatGauge = InitHeatGauge(part);
+					}
+					heatGauge.SetValue(heat, maxHeat/3, maxHeat);
+				}
+				else if(heatGauge != null && heat < maxHeat/4)
+				{
+					part.stackIcon.ClearInfoBoxes();
+					heatGauge = null;
+				}
 			}
 			
 			heat = Mathf.Clamp(heat - heatLoss * TimeWarp.fixedDeltaTime, 0, Mathf.Infinity);
@@ -570,7 +623,6 @@ namespace BahaTurret
 		
 		private void Aim()
 		{
-			
 			inTurretRange = true;
 			
 			Vector3 target;
@@ -588,11 +640,11 @@ namespace BahaTurret
 			{
 				if(autoFireTarget)
 				{
-					target = autoFireTarget.transform.position;	
-					
+					target = autoFireTarget.CoM;	
+
 					targetVessel = autoFireTarget;
 					
-					target += targetVessel.rigidbody.velocity * Time.fixedDeltaTime;
+					target += targetVessel.rb_velocity * Time.fixedDeltaTime;
 				}
 				else
 				{
@@ -605,7 +657,7 @@ namespace BahaTurret
 			{
 				if(autoLockCapable && targetVessel != null)
 				{
-					target = targetVessel.transform.position + targetVessel.rigidbody.velocity * Time.fixedDeltaTime;
+					target = targetVessel.CoM + targetVessel.rb_velocity * Time.fixedDeltaTime;
 				}
 				else
 				{
@@ -625,11 +677,10 @@ namespace BahaTurret
 							
 						}catch(NullReferenceException){}
 						
-						
-						
-					}else
+					}
+					else
 					{
-						target = ray.direction * maxTargetingRange + FlightCamera.fetch.mainCamera.transform.position;	
+						target = (ray.direction * maxTargetingRange) + FlightCamera.fetch.mainCamera.transform.position;	
 						if(targetVessel!=null && targetVessel.loaded)
 						{
 							target = ray.direction * Vector3.Distance(targetVessel.transform.position, FlightCamera.fetch.mainCamera.transform.position) + FlightCamera.fetch.mainCamera.transform.position;	
@@ -656,18 +707,18 @@ namespace BahaTurret
 				{
 					//Vector3 acceleration = (targetVessel.rigidbody.velocity - targetPrevVel)/Time.fixedDeltaTime;
 					Vector3 acceleration = targetVessel.acceleration;
-					float time2 = CalculateLeadTime(target-transform.position, targetVessel.rigidbody.velocity-rigidbody.velocity, bulletVelocity);
+					float time2 = VectorUtils.CalculateLeadTime(target-transform.position, targetVessel.rb.velocity-rb.velocity, bulletVelocity);
 					if(time2 > 0) time = time2;
-					target += (targetVessel.rigidbody.velocity-rigidbody.velocity) * time; //target vessel relative velocity compensation
+					target += (targetVessel.rb.velocity-rb.velocity) * time; //target vessel relative velocity compensation
 					target += (0.5f * acceleration * time * time); //target acceleration
-					targetPrevVel = targetVessel.rigidbody.velocity;
+					targetPrevVel = targetVessel.rb.velocity;
 					
 				}
 				else if(vessel.altitude < 5000)
 				{
-					float time2 = CalculateLeadTime(target-transform.position, Vector3.zero-rigidbody.velocity, bulletVelocity);
+					float time2 = VectorUtils.CalculateLeadTime(target-transform.position, Vector3.zero-rb.velocity, bulletVelocity);
 					if(time2 > 0) time = time2;
-					target += (-rigidbody.velocity*(time+Time.fixedDeltaTime));  //this vessel velocity compensation against stationary
+					target += (-rb.velocity*(time+Time.fixedDeltaTime));  //this vessel velocity compensation against stationary
 				}
 				if(bulletDrop && FlightGlobals.RefFrameIsRotating) target += (0.5f*gAccel*time*time * FlightGlobals.getUpAxis());  //gravity compensation
 				
@@ -781,7 +832,7 @@ namespace BahaTurret
 				Transform fireTransform = part.FindModelTransform("fireTransform");
 				Vector3 targetDirection = targetPosition-fireTransform.position;
 				Vector3 aimDirection = fireTransform.forward;
-				if(Vector3.Angle(aimDirection, targetDirection) < 2)
+				if(Vector3.Angle(aimDirection, targetDirection) < maxAutoFireAngle)
 				{
 					autoFire = true;
 				}
@@ -857,7 +908,6 @@ namespace BahaTurret
 		
 		private void Fire()
 		{
-			
 			float timeGap = (60/roundsPerMinute) * TimeWarp.CurrentRate;
 			
 			if(Time.time-timeCheck > timeGap && !isOverheated)
@@ -866,7 +916,7 @@ namespace BahaTurret
 				Transform[] fireTransforms = part.FindModelTransforms("fireTransform");
 				foreach(Transform tf in fireTransforms)
 				{
-					if(!CheckMouseIsOnGui() && WMgrAuthorized() && (part.RequestResource(ammoName, requestResourceAmount)>0 || BDArmorySettings.INFINITE_AMMO))
+					if(!CheckMouseIsOnGui() && WMgrAuthorized() && (BDArmorySettings.INFINITE_AMMO || part.RequestResource(ammoName, requestResourceAmount)>0))
 					{
 						spinningDown = false;
 						
@@ -942,11 +992,11 @@ namespace BahaTurret
 							{
 								foreach(Transform sTf in part.FindModelTransforms("shellEject"))
 								{
-									GameObject ejectedShell = (GameObject) Instantiate(GameDatabase.Instance.GetModel("BDArmory/Models/shell/model"), sTf.position + rigidbody.velocity*(Time.fixedDeltaTime), sTf.rotation);
+									GameObject ejectedShell = (GameObject) Instantiate(GameDatabase.Instance.GetModel("BDArmory/Models/shell/model"), sTf.position + rb.velocity*(Time.fixedDeltaTime), sTf.rotation);
 									ejectedShell.SetActive(true);
 									ejectedShell.transform.localScale = Vector3.one * shellScale;
 									ShellCasing shellComponent = ejectedShell.AddComponent<ShellCasing>();
-									shellComponent.initialV = rigidbody.velocity;
+									shellComponent.initialV = rb.velocity;
 									
 								}
 							}
@@ -979,8 +1029,8 @@ namespace BahaTurret
 							}
 						}
 						firedBullet.transform.position -= firedVelocity * Time.fixedDeltaTime;
-						firedBullet.transform.position += rigidbody.velocity * Time.fixedDeltaTime;
-						firedBullet.rigidbody.AddForce(this.rigidbody.velocity + firedVelocity, ForceMode.VelocityChange);
+						firedBullet.transform.position += rb.velocity * Time.fixedDeltaTime;
+						firedBullet.rigidbody.AddForce(this.rb.velocity + firedVelocity, ForceMode.VelocityChange);
 						if(weaponType != "laser")
 						{
 							BahaTurretBullet bulletScript = firedBullet.AddComponent<BahaTurretBullet>();
@@ -1056,25 +1106,29 @@ namespace BahaTurret
 				{
 					
 					LineRenderer lr = tf.gameObject.GetComponent<LineRenderer>();
-					lr.SetPosition(0, tf.position + rigidbody.velocity*Time.fixedDeltaTime);
-					lr.SetPosition(1, (tf.forward*maxDistance)+tf.position);
+					lr.SetPosition(0, tf.position + (rb.velocity*Time.fixedDeltaTime));
+
 					Vector3 rayDirection = tf.forward;
 					
 					Vector3 targetDirection = Vector3.zero;  //autoTrack enhancer
+					Vector3 targetDirectionLR = tf.forward;
+					Vector3 physStepFix = Vector3.zero;
 					if(targetVessel!=null && targetVessel.loaded)
 					{
-						targetDirection = targetVessel.transform.position - tf.position;
-					}
-					if(targetVessel!=null && targetVessel.loaded && autoLockCapable && Vector3.Angle(rayDirection, targetDirection) < 2)
-					{
-						rayDirection = targetDirection;
+						targetDirection = (targetVessel.CoM+(targetVessel.rb.velocity*Time.fixedDeltaTime)) - tf.position;
+						physStepFix = targetVessel.rb.velocity*Time.fixedDeltaTime;
+						if(autoLockCapable && Vector3.Angle(rayDirection, targetDirection) < 3)
+						{
+							rayDirection = targetDirection;
+							targetDirectionLR = (targetVessel.CoM+(2*targetVessel.rb.velocity*Time.fixedDeltaTime)) - tf.position;
+						}
 					}
 					
 					Ray ray = new Ray(tf.position, rayDirection);
 					RaycastHit hit;
 					if(Physics.Raycast(ray, out hit, maxDistance, 557057))
 					{
-						lr.SetPosition(1, hit.point);
+						lr.SetPosition(1, hit.point + (physStepFix));
 						if(Time.time-timeCheck > 60/1200 && BDArmorySettings.BULLET_HITS)
 						{
 							BulletHitFX.CreateBulletHit(hit.point, hit.normal, false);	
@@ -1093,6 +1147,10 @@ namespace BahaTurret
 						}
 						catch(NullReferenceException){}
 					
+					}
+					else
+					{
+						lr.SetPosition(1, (targetDirectionLR*maxDistance)+tf.position);
 					}
 				}
 				heat += heatPerShot * TimeWarp.CurrentRate;
@@ -1134,6 +1192,8 @@ namespace BahaTurret
 					hitPart = null;
 					pointingAtPosition = fireTr.position + (ray.direction * (maxTargetingRange));
 				}
+
+
 				if(targetVessel!=null && targetVessel.loaded) pointingAtPosition = fireTr.transform.position + (ray.direction * targetLeadDistance);
 			}
 			
@@ -1147,10 +1207,10 @@ namespace BahaTurret
 					float simDeltaTime = 0.15f;
 					
 
-					Vector3 simVelocity = rigidbody.velocity+(bulletVelocity*fireTransform.forward);
-					Vector3 simCurrPos = fireTransform.position + (rigidbody.velocity*Time.fixedDeltaTime);
-					Vector3 simPrevPos = fireTransform.position + (rigidbody.velocity*Time.fixedDeltaTime);
-					Vector3 simStartPos = fireTransform.position + (rigidbody.velocity*Time.fixedDeltaTime);
+					Vector3 simVelocity = rb.velocity+(bulletVelocity*fireTransform.forward);
+					Vector3 simCurrPos = fireTransform.position + (rb.velocity*Time.fixedDeltaTime);
+					Vector3 simPrevPos = fireTransform.position + (rb.velocity*Time.fixedDeltaTime);
+					Vector3 simStartPos = fireTransform.position + (rb.velocity*Time.fixedDeltaTime);
 					bool simulating = true;
 					
 					List<Vector3> pointPositions = new List<Vector3>();
@@ -1253,7 +1313,7 @@ namespace BahaTurret
 		}
 		
 		//overheat gauge
-		static public VInfoBox InitHeatGauge(Part p)  //thanks DYJ
+		public VInfoBox InitHeatGauge(Part p)  //thanks DYJ
         {
             VInfoBox v = p.stackIcon.DisplayInfo();
 
@@ -1265,7 +1325,19 @@ namespace BahaTurret
 
             return v;
         }
-		
+
+		public VInfoBox InitReloadBar(Part p)
+		{
+			VInfoBox v = p.stackIcon.DisplayInfo();
+
+			v.SetMsgBgColor(XKCDColors.DarkGrey);
+			v.SetMsgTextColor(XKCDColors.White);
+			v.SetMessage("Reloading");
+			v.SetProgressBarBgColor(XKCDColors.DarkGrey);
+			v.SetProgressBarColor(XKCDColors.Silver);
+
+			return v;
+		}
 		
 		
 		//Animation Setup
@@ -1329,28 +1401,7 @@ namespace BahaTurret
 		
 
 		
-		//from howlingmoonsoftware.com
-		//calculates how long it will take for a target to be where it will be when a bullet fired now can reach it.
-		//delta = initial relative position, vr = relative velocity, muzzleV = bullet velocity.
-		public static float CalculateLeadTime(Vector3 delta, Vector3 vr, float muzzleV)
-		{
-			// Quadratic equation coefficients a*t^2 + b*t + c = 0
-  			float a = Vector3.Dot(vr, vr) - muzzleV*muzzleV;
-			float b = 2f*Vector3.Dot(vr, delta);
-			float c = Vector3.Dot(delta, delta);
-			
-			float det = b*b - 4f*a*c;
-			
-			// If the determinant is negative, then there is no solution
-			if(det > 0f)
-			{
-				return 2f*c/(Mathf.Sqrt(det) - b);
-			} 
-			else 
-			{
-				return -1f;
-			}	
-		}
+
 		
 		bool CheckMouseIsOnGui()
 		{
@@ -1359,7 +1410,7 @@ namespace BahaTurret
 		
 		bool WMgrAuthorized()
 		{
-			MissileFire manager = BDArmorySettings.Instance.wpnMgr;
+			MissileFire manager = BDArmorySettings.Instance.ActiveWeaponManager;
 			if(manager != null)
 			{
 				if(manager.hasSingleFired) return false;
@@ -1429,7 +1480,10 @@ namespace BahaTurret
 		}
 		
 		
-		
+		public Vector3 GetLeadOffset()
+		{
+			return fixedLeadOffset;
+		}
 	}
 	
 	

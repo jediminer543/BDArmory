@@ -34,6 +34,23 @@ namespace BahaTurret
             }
             return states.ToArray();
         }
+
+		public static AnimationState SetUpSingleAnimation(string animationName, Part part)
+		{
+			var states = new List<AnimationState>();
+
+			foreach (var animation in part.FindModelAnimators(animationName))
+			{
+				var animationState = animation[animationName];
+				animationState.speed = 0;
+				animationState.enabled = true;
+				animationState.wrapMode = WrapMode.ClampForever;
+				animation.Blend(animationName);
+				return animationState;
+			}
+
+			return null;
+		}
 		
 		public static bool CheckMouseIsOnGui()
 		{
@@ -45,8 +62,10 @@ namespace BahaTurret
 				BDArmorySettings.GAME_UI_ENABLED && 
 				BDArmorySettings.FIRE_KEY.Contains("mouse") &&
 				(
-					(BDArmorySettings.toolbarGuiEnabled && BDArmorySettings.Instance.toolbarWindowRect.Contains(inverseMousePos)) || 
-					topGui.Contains(inverseMousePos)
+					(BDArmorySettings.toolbarGuiEnabled && BDArmorySettings.Instance.toolbarWindowRect.Contains(inverseMousePos)) 
+					|| topGui.Contains(inverseMousePos)
+					|| (ModuleTargetingCamera.windowIsOpen && ModuleTargetingCamera.camWindowRect.Contains(inverseMousePos))
+					|| (BDArmorySettings.Instance.ActiveWeaponManager!=null && BDArmorySettings.Instance.ActiveWeaponManager.radar!=null && BDArmorySettings.Instance.ActiveWeaponManager.radar.radarEnabled && ModuleRadar.radarWindowRect.Contains(inverseMousePos))
 				)
 			);	
 		}
@@ -81,6 +100,118 @@ namespace BahaTurret
 			float finalAngle = sign * angle;
 			return finalAngle;
 		}
+		/// <summary>
+		/// Parses the string to a curve.
+		/// Format: "key:pair,key:pair"
+		/// </summary>
+		/// <returns>The curve.</returns>
+		/// <param name="curveString">Curve string.</param>
+		public static FloatCurve ParseCurve(string curveString)
+		{
+			string[] pairs = curveString.Split(new char[]{','});
+			Keyframe[] keys = new Keyframe[pairs.Length]; 
+			for(int p = 0; p < pairs.Length; p++)
+			{
+				string[] pair = pairs[p].Split(new char[]{':'});
+				keys[p] = new Keyframe(float.Parse(pair[0]),float.Parse(pair[1]));
+			}
+
+			FloatCurve curve = new FloatCurve(keys);
+
+			return curve;
+		}
+
+		public static bool CheckSightLine(Vector3 origin, Vector3 target, float maxDistance, float threshold, float startDistance)
+		{
+			float dist = maxDistance;
+			Ray ray = new Ray(origin, target-origin);
+			ray.origin += ray.direction*startDistance;
+			RaycastHit rayHit;
+			if(Physics.Raycast(ray, out rayHit, dist, 557057))
+			{
+				if((rayHit.point-target).sqrMagnitude < Mathf.Pow(threshold, 2))
+				{
+					return true;
+				}
+				else
+				{
+					return false;
+				}
+			}
+			
+			return true;
+		}
+
+
+
+		public static float[] ParseToFloatArray(string floatString)
+		{
+			string[] floatStrings = floatString.Split(new char[]{','});
+			float[] floatArray = new float[floatStrings.Length];
+			for(int i = 0; i < floatStrings.Length; i++)
+			{
+				floatArray[i] = float.Parse(floatStrings[i]);
+			}
+
+			return floatArray;
+		}
+
+		public static string FormattedGeoPos(Vector3d geoPos, bool altitude)
+		{
+			string finalString = string.Empty;
+			//lat
+			double lat = geoPos.x;
+			double latSign = Math.Sign(lat);
+			double latMajor = latSign * Math.Floor(Math.Abs(lat));
+			double latMinor = 100 * (Math.Abs(lat) - Math.Abs(latMajor));
+			string latString = latMajor.ToString("0") + " " + latMinor.ToString("0.000");
+			finalString += "N:" + latString;
+
+
+			//longi
+			double longi = geoPos.y;
+			double longiSign = Math.Sign(longi);
+			double longiMajor = longiSign * Math.Floor(Math.Abs(longi));
+			double longiMinor = 100 * (Math.Abs(longi) - Math.Abs(longiMajor));
+			string longiString = longiMajor.ToString("0") + " " + longiMinor.ToString("0.000");
+			finalString += " E:" + longiString;
+
+			if(altitude)
+			{
+				finalString += " ASL:" + geoPos.z.ToString("0.000");
+			}
+
+			return finalString;
+		}
+
+		public static string FormattedGeoPosShort(Vector3d geoPos, bool altitude)
+		{
+			string finalString = string.Empty;
+			//lat
+			double lat = geoPos.x;
+			double latSign = Math.Sign(lat);
+			double latMajor = latSign * Math.Floor(Math.Abs(lat));
+			double latMinor = 100 * (Math.Abs(lat) - Math.Abs(latMajor));
+			string latString = latMajor.ToString("0") + " " + latMinor.ToString("0");
+			finalString += "N:" + latString;
+
+
+			//longi
+			double longi = geoPos.y;
+			double longiSign = Math.Sign(longi);
+			double longiMajor = longiSign * Math.Floor(Math.Abs(longi));
+			double longiMinor = 100 * (Math.Abs(longi) - Math.Abs(longiMajor));
+			string longiString = longiMajor.ToString("0") + " " + longiMinor.ToString("0");
+			finalString += " E:" + longiString;
+
+			if(altitude)
+			{
+				finalString += " ASL:" + geoPos.z.ToString("0");
+			}
+
+			return finalString;
+		}
+
 		
 	
 	}
