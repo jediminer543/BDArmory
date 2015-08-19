@@ -84,7 +84,7 @@ namespace BahaTurret
 		//contacts
 		TargetSignatureData[] contacts;
 		TargetSignatureData[] attemptedLocks;
-		public TargetSignatureData lockedTarget;
+		public TargetSignatureData lockedTarget = TargetSignatureData.noTarget;
 
 		//GUI
 		bool drawGUI = false;
@@ -116,6 +116,12 @@ namespace BahaTurret
 		float currentAngleLock = 0;
 		Transform referenceTransform;
 		float radialScanDirection = 1;
+
+
+		//radar selector
+		bool showSelector = false;
+		Vector2 selectorPos = Vector2.zero;
+
 
 		public bool boresightScan = false;
 
@@ -291,7 +297,7 @@ namespace BahaTurret
 		// Update is called once per frame
 		void Update ()
 		{
-			if(HighLogic.LoadedSceneIsFlight && FlightGlobals.ready && !vessel.packed)
+			if(HighLogic.LoadedSceneIsFlight && FlightGlobals.ready && !vessel.packed && radarEnabled)
 			{
 				if(omnidirectional)
 				{
@@ -303,8 +309,9 @@ namespace BahaTurret
 					referenceTransform.position = vessel.transform.position;
 					referenceTransform.rotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(transform.up, VectorUtils.GetUpDirection(referenceTransform.position)), VectorUtils.GetUpDirection(referenceTransform.position));
 				}
-
+				UpdateInputs();
 			}
+
 			drawGUI = (HighLogic.LoadedSceneIsFlight && FlightGlobals.ready && !vessel.packed && radarEnabled && vessel.isActiveVessel && BDArmorySettings.GAME_UI_ENABLED);
 		}
 
@@ -350,6 +357,133 @@ namespace BahaTurret
 			if (HighLogic.LoadedSceneIsFlight && canScan)
 			{
 				UpdateModel ();
+			}
+		}
+
+		void UpdateInputs()
+		{
+			if(!vessel.isActiveVessel)
+			{
+				return;
+			}
+
+
+			if(BDInputUtils.GetKey(BDInputSettingsFields.RADAR_SLEW_RIGHT))
+			{
+				ShowSelector();
+				SlewSelector(Vector2.right);
+			}
+			else if(BDInputUtils.GetKey(BDInputSettingsFields.RADAR_SLEW_LEFT))
+			{
+				ShowSelector();
+				SlewSelector(-Vector2.right);
+			}
+
+			if(BDInputUtils.GetKey(BDInputSettingsFields.RADAR_SLEW_UP))
+			{
+				ShowSelector();
+				SlewSelector(-Vector2.up);
+			}
+			else if(BDInputUtils.GetKey(BDInputSettingsFields.RADAR_SLEW_DOWN))
+			{
+				ShowSelector();
+				SlewSelector(Vector2.up);
+			}
+
+			if(BDInputUtils.GetKeyDown(BDInputSettingsFields.RADAR_LOCK))
+			{
+				if(locked)
+				{
+					UnlockTarget();
+				}
+				else
+				{
+					if(showSelector)
+					{
+						TryLockViaSelector();
+					}
+					ShowSelector();
+				}
+			}
+
+			if(BDInputUtils.GetKeyDown(BDInputSettingsFields.RADAR_TURRETS))
+			{
+				if(slaveTurrets)
+				{
+					UnslaveTurrets();
+				}
+				else
+				{
+					SlaveTurrets();
+				}
+			}
+
+			if(BDInputUtils.GetKeyDown(BDInputSettingsFields.RADAR_RANGE_UP))
+			{
+				IncreaseRange(); 
+			}
+			else if(BDInputUtils.GetKeyDown(BDInputSettingsFields.RADAR_RANGE_DN))
+			{
+				DecreaseRange();
+			}
+		}
+
+		void TryLockViaSelector()
+		{
+			bool found = false;
+			Vector3 closestPos = Vector3.zero;
+			float closestSqrMag = float.MaxValue;
+			for(int i = 0; i < contacts.Length; i++)
+			{
+				float sqrMag = (contacts[i].pingPosition - selectorPos).sqrMagnitude;
+				if(sqrMag < Mathf.Pow(20, 2) && sqrMag < closestSqrMag)
+				{
+					closestPos = contacts[i].predictedPosition;
+					found = true;
+				}
+			}
+
+			if(found)
+			{
+				TryLockTarget(closestPos);
+			}
+		}
+
+		void SlewSelector(Vector2 direction)
+		{
+			float rate = 150;
+			selectorPos += direction * rate * Time.deltaTime; 
+
+			if(!omnidirectional)
+			{
+				if(selectorPos.y > radarScreenSize * 0.975f)
+				{
+					if(rangeIndex > 0)
+					{
+						DecreaseRange();
+						selectorPos.y = radarScreenSize * 0.75f;
+					}
+				}
+				else if(selectorPos.y < radarScreenSize * 0.025f)
+				{
+					if(rangeIndex < rIncrements.Length - 1)
+					{
+						IncreaseRange();
+						selectorPos.y = radarScreenSize * 0.25f;
+					}
+				}
+			}
+
+			selectorPos.y = Mathf.Clamp(selectorPos.y, 10, radarScreenSize - 10);
+			selectorPos.x = Mathf.Clamp(selectorPos.x, 10, radarScreenSize - 10);
+		}
+
+		void ShowSelector()
+		{
+			if(!showSelector)
+			{
+				showSelector = true;
+				selectorPos = new Vector2(radarScreenSize / 2, radarScreenSize / 2);
 			}
 		}
 
@@ -587,12 +721,22 @@ namespace BahaTurret
 
 		void IncreaseRange()
 		{
+			int origIndex = rangeIndex;
 			rangeIndex = Mathf.Clamp(rangeIndex+1, 0, rIncrements.Length-1);
+			if(origIndex != rangeIndex)
+			{
+				pingPositionsDirty = true;
+			}
 		}
 
 		void DecreaseRange()
 		{
+			int origIndex = rangeIndex;
 			rangeIndex = Mathf.Clamp(rangeIndex-1, 0, rIncrements.Length-1);
+			if(origIndex != rangeIndex)
+			{
+				pingPositionsDirty = true;
+			}
 		}
 
 		void SlaveTurrets()
@@ -628,16 +772,19 @@ namespace BahaTurret
 			if(drawGUI)
 			{
 				radarWindowRect = GUI.Window(524314, radarWindowRect, RadarWindow, string.Empty, HighLogic.Skin.window);
+				BDGUIUtils.UseMouseEventInRect(radarWindowRect);
 
 				if(linkWindowOpen && canRecieveRadarData)
 				{
 					linkWindowRect = new Rect(radarWindowRect.x - linkRectWidth, radarWindowRect.y+16, linkRectWidth, 16 + (numberOfAvailableLinks * linkRectEntryHeight));
 					LinkRadarWindow();
+
+					BDGUIUtils.UseMouseEventInRect(linkWindowRect);
 				}
 
 				if(locked)
 				{
-					if(lockedTarget.targetInfo && weaponManager && lockedTarget.targetInfo.team == BDATargetManager.BoolToTeam(weaponManager.team)) 
+					if(weaponManager && lockedTarget.team == BDATargetManager.BoolToTeam(weaponManager.team)) 
 					{
 						BDGUIUtils.DrawTextureOnWorldPos(lockedTarget.predictedPosition, BDArmorySettings.Instance.crossedGreenSquare, new Vector2(20, 20), 0);
 					}
@@ -650,6 +797,7 @@ namespace BahaTurret
 				{
 					BDGUIUtils.DrawTextureOnWorldPos(transform.position + (3500 * transform.up), BDArmorySettings.Instance.dottedLargeGreenCircle, new Vector2(156, 156), 0);
 				}
+
 
 			}
 		}
@@ -669,10 +817,9 @@ namespace BahaTurret
 			GUI.BeginGroup(displayRect);
 
 
-
-
-
 			Rect radarRect = new Rect(0,0,radarScreenSize,radarScreenSize); //actual rect within group
+
+
 
 			if(omnidirectional || linked)
 			{
@@ -729,6 +876,17 @@ namespace BahaTurret
 					Vector2 scanIndicatorPos = RadarUtils.WorldToRadarRadial(referenceTransform.position + (Quaternion.AngleAxis(indicatorAngle, referenceTransform.up) * referenceTransform.forward), referenceTransform, radarRect, 5000, directionalFieldOfView / 2);
 					GUI.DrawTexture(new Rect(scanIndicatorPos.x - 7, scanIndicatorPos.y - 10, 14, 20), BDArmorySettings.Instance.greenDiamondTexture, ScaleMode.StretchToFill, true);
 				}
+			}
+
+			//selector
+			if(showSelector)
+			{
+				float selectorSize = 18;
+				Rect selectorRect = new Rect(selectorPos.x - (selectorSize / 2), selectorPos.y - (selectorSize / 2), selectorSize, selectorSize);
+				Rect sLeftRect = new Rect(selectorRect.x, selectorRect.y, selectorSize / 6, selectorRect.height);
+				Rect sRightRect = new Rect(selectorRect.x + selectorRect.width - (selectorSize / 6), selectorRect.y, selectorSize / 6, selectorRect.height);
+				BDGUIUtils.DrawRectangle(sLeftRect, Color.green);
+				BDGUIUtils.DrawRectangle(sRightRect, Color.green);
 			}
 
 			//missile data
@@ -996,7 +1154,7 @@ namespace BahaTurret
 			}
 			CloseLinkRadarWindow();
 		}
-
+		bool pingPositionsDirty = true;
 		void DrawScannedContacts(ref TargetSignatureData[] scannedContacts, Rect radarRect)
 		{
 			float myAlt = (float)vessel.altitude;
@@ -1042,13 +1200,22 @@ namespace BahaTurret
 					}
 
 					Vector2 pingPosition;
-					if(omnidirectional || linked)
+					if(pingPositionsDirty || scannedContacts[i].pingPosition == Vector2.zero)
 					{
-						pingPosition = RadarUtils.WorldToRadar(scannedContacts[i].position, referenceTransform, radarRect, rIncrements[rangeIndex]);
+						if(omnidirectional || linked)
+						{
+							pingPosition = RadarUtils.WorldToRadar(scannedContacts[i].position, referenceTransform, radarRect, rIncrements[rangeIndex]);
+						}
+						else
+						{
+							pingPosition = RadarUtils.WorldToRadarRadial(scannedContacts[i].position, referenceTransform, radarRect, rIncrements[rangeIndex], directionalFieldOfView / 2);
+						}
+
+						scannedContacts[i].pingPosition = pingPosition;
 					}
 					else
 					{
-						pingPosition = RadarUtils.WorldToRadarRadial(scannedContacts[i].position, referenceTransform, radarRect, rIncrements[rangeIndex], directionalFieldOfView / 2);
+						pingPosition = scannedContacts[i].pingPosition;
 					}
 
 					Rect pingRect;
@@ -1155,6 +1322,8 @@ namespace BahaTurret
 					}
 				}
 			}
+
+			pingPositionsDirty = false;
 		}
 
 

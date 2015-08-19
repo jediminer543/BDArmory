@@ -60,7 +60,7 @@ namespace BahaTurret
 			return 
 			(
 				BDArmorySettings.GAME_UI_ENABLED && 
-				BDArmorySettings.FIRE_KEY.Contains("mouse") &&
+				BDInputSettingsFields.WEAP_FIRE_KEY.inputString.Contains("mouse") &&
 				(
 					(BDArmorySettings.toolbarGuiEnabled && BDArmorySettings.Instance.toolbarWindowRect.Contains(inverseMousePos)) 
 					|| topGui.Contains(inverseMousePos)
@@ -68,6 +68,12 @@ namespace BahaTurret
 					|| (BDArmorySettings.Instance.ActiveWeaponManager!=null && BDArmorySettings.Instance.ActiveWeaponManager.radar!=null && BDArmorySettings.Instance.ActiveWeaponManager.radar.radarEnabled && ModuleRadar.radarWindowRect.Contains(inverseMousePos))
 				)
 			);	
+		}
+
+		public static bool MouseIsInRect(Rect rect)
+		{
+			Vector3 inverseMousePos = new Vector3(Input.mousePosition.x, Screen.height-Input.mousePosition.y, 0);
+			return rect.Contains(inverseMousePos);
 		}
 		
 		//Thanks FlowerChild
