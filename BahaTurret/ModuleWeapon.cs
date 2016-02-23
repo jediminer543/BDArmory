@@ -15,7 +15,11 @@ namespace BahaTurret
 {
 	public class ModuleWeapon : PartModule, IBDWeapon
 	{
-		public static ObjectPool bulletPool;
+        //BDDMP HEAD MOD BEGIN
+        public bool deployLocked = false;
+        //BDDMP HEAD MOD END
+
+        public static ObjectPool bulletPool;
 		public static ObjectPool shellPool;
 
 		public enum WeaponTypes{Ballistic, Cannon, Laser}
@@ -1181,7 +1185,9 @@ namespace BahaTurret
 							p.temperature += laserDamage/(1+Mathf.PI*Mathf.Pow(tanAngle*distance,2))*TimeWarp.fixedDeltaTime; 
 							
 							if(BDArmorySettings.INSTAKILL) p.temperature += p.maxTemp;
-						}
+
+                            HitManager.FireHitHooks(p);
+                        }
 					}
 					else
 					{
@@ -1369,7 +1375,12 @@ namespace BahaTurret
 
 		public void EnableWeapon()
 		{
-			if(weaponState == WeaponStates.Enabled || weaponState == WeaponStates.PoweringUp)
+            if (deployLocked)
+            {
+                weaponState = WeaponStates.Disabled;
+                return;
+            }
+            if (weaponState == WeaponStates.Enabled || weaponState == WeaponStates.PoweringUp)
 			{
 				return;
 			}
@@ -1413,7 +1424,8 @@ namespace BahaTurret
 			}
 
 			weaponState = WeaponStates.Enabled;
-			UpdateGUIWeaponState();
+            HitManager.FireTurretDeployHooks(true, vessel.id, part.craftID);
+            UpdateGUIWeaponState();
 		}
 
 		void UpdateGUIWeaponState()
@@ -1423,7 +1435,12 @@ namespace BahaTurret
 		
 		public void DisableWeapon()
 		{
-			if(weaponState == WeaponStates.Disabled || weaponState == WeaponStates.PoweringDown)
+            if (deployLocked)
+            {
+                weaponState = WeaponStates.Disabled;
+                return;
+            }
+            if (weaponState == WeaponStates.Disabled || weaponState == WeaponStates.PoweringDown)
 			{
 				return;
 			}
@@ -1462,7 +1479,9 @@ namespace BahaTurret
 			}
 
 			weaponState = WeaponStates.Disabled;
-			UpdateGUIWeaponState();
+            HitManager.FireTurretDeployHooks(false, vessel.id, part.craftID);
+            deployLocked = false;
+            UpdateGUIWeaponState();
 		}
 
 		void UpdateHeat()

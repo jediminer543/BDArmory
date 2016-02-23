@@ -26,7 +26,8 @@ $RECYCLE.BIN/
 .LSOverride
 
 # Icon must ends with two \r.
-Icon
+Icon
+
 # Thumbnails
 ._*
 
@@ -35,7 +36,7 @@ Icon
 .Trashes
 
 TrackIRUnity.dll
-Assembly-*
+Assembly*
 Mono*
 mscorlib.dll
 System*
@@ -43,6 +44,3 @@ TDx*
 UnityEngine.dll
 *.pdb
 *.jar
-*.bat
-
-BahaTurret/BahaTurret.userprefs

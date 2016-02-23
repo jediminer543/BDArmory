@@ -26,3 +26,17 @@ D:\Plugin Projects\BahaTurret\BahaTurret\bin\Debug\Mono.Security.dll
 D:\Plugin Projects\BahaTurret\BahaTurret\obj\x86\Debug\BahaTurret.dll
 D:\Plugin Projects\BahaTurret\BahaTurret\obj\x86\Debug\BahaTurret.pdb
 D:\Plugin Projects\BahaTurret\BahaTurret\obj\x86\Debug\BahaTurret.csprojResolveAssemblyReference.cache
+D:\KSP BDAMP\BDArmory\BahaTurret\bin\Debug\BahaTurret.dll
+D:\KSP BDAMP\BDArmory\BahaTurret\bin\Debug\BahaTurret.pdb
+D:\KSP BDAMP\BDArmory\BahaTurret\bin\Debug\Assembly-CSharp.dll
+D:\KSP BDAMP\BDArmory\BahaTurret\bin\Debug\UnityEngine.dll
+D:\KSP BDAMP\BDArmory\BahaTurret\bin\Debug\System.dll
+D:\KSP BDAMP\BDArmory\BahaTurret\bin\Debug\Assembly-CSharp-firstpass.dll
+D:\KSP BDAMP\BDArmory\BahaTurret\bin\Debug\System.Xml.dll
+D:\KSP BDAMP\BDArmory\BahaTurret\bin\Debug\TDx.TDxInput.dll
+D:\KSP BDAMP\BDArmory\BahaTurret\bin\Debug\TrackIRUnity.dll
+D:\KSP BDAMP\BDArmory\BahaTurret\bin\Debug\Mono.Cecil.dll
+D:\KSP BDAMP\BDArmory\BahaTurret\bin\Debug\Mono.Security.dll
+D:\KSP BDAMP\BDArmory\BahaTurret\obj\x86\Debug\BahaTurret.csprojResolveAssemblyReference.cache
+D:\KSP BDAMP\BDArmory\BahaTurret\obj\x86\Debug\BahaTurret.dll
+D:\KSP BDAMP\BDArmory\BahaTurret\obj\x86\Debug\BahaTurret.pdb

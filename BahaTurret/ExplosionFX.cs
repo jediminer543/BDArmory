@@ -63,12 +63,22 @@ namespace BahaTurret
 				GameObject.Destroy(gameObject);	
 			}
 		}
-		
-		
-	
-		public static void CreateExplosion(Vector3 position, float radius, float power, float heat, Vessel sourceVessel, Vector3 direction, string explModelPath, string soundPath)
+
+
+
+        public static void CreateExplosion(Vector3 position, float radius, float power, float heat, Vessel sourceVessel, Vector3 direction, string explModelPath, string soundPath)
+        {
+            CreateExplosion(position, radius, power, heat, sourceVessel, direction, explModelPath, soundPath, true);
+        }
+
+        public static void CreateExplosion(Vector3 position, float radius, float power, float heat, Vessel sourceVessel, Vector3 direction, string explModelPath, string soundPath, bool fireExplosionHooks)
 		{
-			GameObject go;
+            if (fireExplosionHooks)
+            {
+                ExplosionObject explosionObj = new ExplosionObject(position, radius, power, heat, sourceVessel, direction, explModelPath, soundPath);
+                HitManager.FireExplosionHooks(explosionObj);
+            }
+            GameObject go;
 			AudioClip soundClip;
 				
 			go = GameDatabase.Instance.GetModel(explModelPath);
@@ -101,8 +111,9 @@ namespace BahaTurret
 
 		public static float ExplosionHeatMultiplier = 4200;
 		public static float ExplosionImpulseMultiplier = 1.5f;
+        static List<Part> hitParts = new List<Part>();
 
-		public static void DoExplosionRay(Ray ray, float power, float heat, float maxDistance, ref List<Part> ignoreParts, ref List<DestructibleBuilding> ignoreBldgs, Vessel sourceVessel = null)
+        public static void DoExplosionRay(Ray ray, float power, float heat, float maxDistance, ref List<Part> ignoreParts, ref List<DestructibleBuilding> ignoreBldgs, Vessel sourceVessel = null)
 		{
 			RaycastHit rayHit;
 			if(Physics.Raycast(ray, out rayHit, maxDistance, 557057))
@@ -145,7 +156,8 @@ namespace BahaTurret
 						{
 							part.parent.temperature += excessHeat;
 						}
-						return;
+                        hitParts.Add(part);
+                        return;
 					}
 				}
 
@@ -167,7 +179,8 @@ namespace BahaTurret
 
 		public static void DoExplosionDamage(Vector3 position, float power, float heat, float maxDistance, Vessel sourceVessel)
 		{
-			if(BDArmorySettings.DRAW_DEBUG_LABELS) Debug.Log("======= Doing explosion sphere =========");
+            hitParts.Clear();
+            if (BDArmorySettings.DRAW_DEBUG_LABELS) Debug.Log("======= Doing explosion sphere =========");
 			ignoreParts.Clear();
 			ignoreBuildings.Clear();
 			foreach(var vessel in BDATargetManager.LoadedVessels)
@@ -191,7 +204,8 @@ namespace BahaTurret
 					DoExplosionRay(new Ray(position, bldg.transform.position - position), power, heat, maxDistance, ref ignoreParts, ref ignoreBuildings);
 				}
 			}
-		}
+            HitManager.FireMultiHitHooks(hitParts);
+        }
 	}
 }
 

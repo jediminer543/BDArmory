@@ -192,7 +192,9 @@ namespace BahaTurret
 
 				cm.SetActive(true);
 
-				FireParticleEffects();
+                HitManager.FireFlareHooks(new FlareObject(cm.transform.position - cmf.sourceVessel.transform.position, cm.transform.rotation, cmf.startVelocity, cmf.sourceVessel.id));
+
+                FireParticleEffects();
 			}
 		}
 

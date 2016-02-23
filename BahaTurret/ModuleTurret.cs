@@ -82,8 +82,11 @@ namespace BahaTurret
 		Vector3 lastTurretDirection;
 		float maxAudioRotRate;
 
+        //BDDMP HEAD MOD BEGIN
+        public bool remoteControl;
+        //BDDMP HEAD MOD END
 
-		public override void OnStart (StartState state)
+        public override void OnStart (StartState state)
 		{
 			base.OnStart (state);
 
@@ -186,7 +189,11 @@ namespace BahaTurret
 
 		public void AimToTarget(Vector3 targetPosition, bool pitch = true, bool yaw = true)
 		{
-			if(!yawTransform)
+            if (remoteControl)
+            {
+                return;
+            }
+            if (!yawTransform)
 			{
 				return;
 			}
@@ -237,11 +244,17 @@ namespace BahaTurret
 
 			if(yaw) yawTransform.localRotation = Quaternion.RotateTowards(yawTransform.localRotation, Quaternion.Euler(0, targetYawAngle, 0), yawSpeed);
 			if(pitch) pitchTransform.localRotation = Quaternion.RotateTowards(pitchTransform.localRotation, Quaternion.Euler(-targetPitchAngle, 0, 0), pitchSpeed);
-		}
+            HitManager.FireTurretYawHook(yawTransform.localRotation, vessel.id, part.craftID);
+            HitManager.FireTurretPitchHook(pitchTransform.localRotation, vessel.id, part.craftID);
+        }
 
 		public bool ReturnTurret()
 		{
-			if(!yawTransform)
+            if (remoteControl)
+            {
+                return false;
+            }
+            if (!yawTransform)
 			{
 				return false;
 			}
@@ -274,7 +287,10 @@ namespace BahaTurret
 			yawTransform.localRotation = Quaternion.RotateTowards(yawTransform.localRotation, Quaternion.identity, yawSpeed);
 			pitchTransform.localRotation = Quaternion.RotateTowards(pitchTransform.localRotation, Quaternion.identity, pitchSpeed);
 
-			if(yawTransform.localRotation == Quaternion.identity && pitchTransform.localRotation == Quaternion.identity)
+            HitManager.FireTurretYawHook(yawTransform.localRotation, vessel.id, part.craftID);
+            HitManager.FireTurretPitchHook(pitchTransform.localRotation, vessel.id, part.craftID);
+
+            if (yawTransform.localRotation == Quaternion.identity && pitchTransform.localRotation == Quaternion.identity)
 			{
 				return true;
 			}

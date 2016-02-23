@@ -1,0 +1,20 @@
+﻿<Properties StartupItem="BahaTurret.csproj">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Release|x86" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="BDModulePilotAI.cs">
+    <Files>
+      <File FileName="MissileFire.cs" Line="969" Column="4" />
+      <File FileName="BDModulePilotAI.cs" Line="891" Column="34" />
+      <File FileName="BDATargetManager.cs" Line="661" Column="31" />
+      <File FileName="BDArmorySettings.cs" Line="1424" Column="22" />
+      <File FileName="BDACompetitionMode.cs" Line="135" Column="39" />
+      <File FileName="ModuleWingCommander.cs" Line="417" Column="4" />
+      <File FileName="MissileLauncher.cs" Line="1666" Column="4" />
+      <File FileName="TargetSignatureData.cs" Line="130" Column="3" />
+      <File FileName="RocketLauncher.cs" Line="560" Column="13" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+</Properties>

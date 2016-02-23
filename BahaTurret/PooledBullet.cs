@@ -6,10 +6,19 @@ namespace BahaTurret
 {
 	public class PooledBullet : MonoBehaviour
 	{
-		public enum PooledBulletTypes{Standard, Explosive}
+        //BEGIN BDDMP HEAD MOD
+        Guid tracerID;
+        uint updateCount = 0;
+        Vector3 antiOffset;
+        float width1, width2;
+        bool sendBullets;
+        static uint bulletNum;
+        //END BDDMP HEAD MOD
+
+        public enum PooledBulletTypes{Standard, Explosive}
         public enum BulletDragTypes { None, AnalyticEstimate, NumericalIntegration }
-		
-		public PooledBulletTypes bulletType;
+
+        public PooledBulletTypes bulletType;
         public BulletDragTypes dragType;
 
         public Vessel sourceVessel;
@@ -80,7 +89,9 @@ namespace BahaTurret
 
 		void OnEnable()
 		{
-			startPosition = transform.position;
+            tracerID = new Guid();
+
+            startPosition = transform.position;
 			collisionEnabled = false;
 
 			maxDistance = Mathf.Clamp(BDArmorySettings.PHYSICS_RANGE, 2500, BDArmorySettings.MAX_BULLET_RANGE);
@@ -152,11 +163,19 @@ namespace BahaTurret
 
 			hasBounced = false;
 
+            antiOffset = sourceVessel.transform.position;
 
+            wasInitiated = true;
 
-			wasInitiated = true;
+            bulletNum++;
+            if (bulletNum > 2)
+            {
+                bulletNum = 0;
+                sendBullets = true;
+                HitManager.FireTracerInitHooks(new InitTracerObject(bulletTexturePath, tracerID, sourceVessel.id, 0));
+            }
 
-			StartCoroutine(FrameDelayedRoutine());
+            StartCoroutine(FrameDelayedRoutine());
 		}
 
 		IEnumerator FrameDelayedRoutine()
@@ -186,7 +205,9 @@ namespace BahaTurret
 		
 		void FixedUpdate()
 		{
-			float distanceFromStart = Vector3.Distance(transform.position, startPosition);
+            updateCount++;
+            Vector3 p1;
+            float distanceFromStart = Vector3.Distance(transform.position, startPosition);
 			if(!gameObject.activeInHierarchy)
 			{
 				return;
@@ -209,11 +230,13 @@ namespace BahaTurret
 			
 			if(tracerLength == 0)
 			{
-				bulletTrail.SetPosition(0, transform.position+(currentVelocity * tracerDeltaFactor * TimeWarp.fixedDeltaTime/TimeWarp.CurrentRate)-(FlightGlobals.ActiveVessel.rb_velocity*TimeWarp.fixedDeltaTime));
+                p1 = transform.position + (currentVelocity * tracerDeltaFactor * TimeWarp.fixedDeltaTime / TimeWarp.CurrentRate) - (FlightGlobals.ActiveVessel.rb_velocity * TimeWarp.fixedDeltaTime);
+                bulletTrail.SetPosition(0, p1);
 			}
 			else
 			{
-				bulletTrail.SetPosition(0, transform.position + ((currentVelocity-sourceOriginalV).normalized * tracerLength));	
+                p1 = transform.position + ((currentVelocity - sourceOriginalV).normalized * tracerLength);
+                bulletTrail.SetPosition(0, p1);	
 			}
 			if(fadeColor)
 			{
@@ -224,10 +247,13 @@ namespace BahaTurret
 
 			
 			bulletTrail.SetPosition(1, transform.position);
-			
-			
-			
-			currPosition = gameObject.transform.position;
+
+            if (sendBullets && updateCount % 10 == 0)
+            {
+                HitManager.FireTracerHooks(new UpdateTracerObject(p1 - antiOffset, transform.position - antiOffset, currentColor, width1, width1, tracerID));
+            }
+
+            currPosition = gameObject.transform.position;
 			
 			if(distanceFromStart > maxDistance)
 			{
@@ -341,8 +367,8 @@ namespace BahaTurret
 									}
 								}
 							}
-						
-						}
+                            HitManager.FireHitHooks(hitPart);
+                        }
 					
 						//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 						/////////////////////////////////////////////////[panzer1b] HEAT BASED DAMAGE CODE END////////////////////////////////////////////////////////////////
@@ -467,8 +493,8 @@ namespace BahaTurret
 
 			float fov = c.fieldOfView;
 			float factor = (fov/60) * resizeFactor * Mathf.Clamp(Vector3.Distance(transform.position, c.transform.position),0,3000)/50;
-			float width1 = tracerStartWidth * factor * randomWidthScale;
-			float width2 = tracerEndWidth * factor * randomWidthScale;
+			width1 = tracerStartWidth * factor * randomWidthScale;
+			width2 = tracerEndWidth * factor * randomWidthScale;
 			
 			bulletTrail.SetWidth(width1, width2);
 		}
@@ -477,7 +503,8 @@ namespace BahaTurret
 		void KillBullet()
 		{
 			gameObject.SetActive(false);
-		}
+            HitManager.FireTracerDestroyHooks(tracerID);
+        }
 		
 		
 		
