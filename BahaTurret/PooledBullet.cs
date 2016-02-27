@@ -248,7 +248,7 @@ namespace BahaTurret
 			
 			bulletTrail.SetPosition(1, transform.position);
 
-            if (sendBullets && updateCount % 15 == 0)
+            if (sendBullets && updateCount % 30 == 0)
             {
                 HitManager.FireTracerHooks(new UpdateTracerObject(p1 - antiOffset, transform.position - antiOffset, currentColor, width1, width1, tracerID));
             }
